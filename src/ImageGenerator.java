@@ -10,6 +10,9 @@ import java.net.URLDecoder;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+/**
+ * A simple stegonagriphic image generator to hide simple codes using various algorithms.
+ */
 public class ImageGenerator
 {
     private final int rows;
@@ -19,7 +22,31 @@ public class ImageGenerator
     private final int colWidth;
 
     private final BufferedImage img;
+    private final String code;
 
+    /**
+     * A single slot Image generator to hide a specific code. Use one of the included algorithms to encode the image.
+     *
+     * @param code the code to hide
+     * @param width the width of the image to hide the code in
+     * @param height the height of the image to hide the code in
+     */
+    public ImageGenerator(String code, int width, int height) {
+        this(code, width, height, 1, 1);
+    }
+
+    /**
+     * An Image generator to hide a specific code in several ways. The generated image will be divided into slots each
+     * of which can be used to demonstrate an algorithm to hide the given code. Each slot will have an index
+     * numbered [0..(numRows * numCols)) with index 0 in the top left and index (numRows * numCols) - 1 in the bottom
+     * right.
+     *
+     * @param code the code to hide
+     * @param width the width of the image to hide the code in
+     * @param height the height of the image to hide the code in
+     * @param numCols the number of columns of slots to divide the image into
+     * @param numRows the number of rows of slots to divide the image into
+     */
     public ImageGenerator(String code, int width, int height, int numRows, int numCols) {
         this.img = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
 
@@ -30,9 +57,30 @@ public class ImageGenerator
         this.rowHeight = img.getHeight() / rows;
         this.colWidth = img.getWidth() / cols;
 
+        this.code = code;
+
         drawText(code);
     }
 
+    /**
+     * Fill the entire image with color
+     *
+     * @param color the color to fill the image with
+     */
+    public void blank(Color color) {
+
+        Graphics g = img.getGraphics();
+        g.setColor(color);
+        g.fillRect(0, 0, img.getWidth(), img.getHeight());
+        g.dispose();
+    }
+
+    /**
+     * Fill one slot with the given color
+     *
+     * @param pos the image slot's index
+     * @param color the color to fill the slot with
+     */
     public void blank(int pos, Color color) {
         Rectangle area = getArea(pos);
 
@@ -43,6 +91,23 @@ public class ImageGenerator
         g.dispose();
     }
 
+    /**
+     * Hide this ImageGenerator's code in the red channel of the provided image. The generated image will look
+     * like the one provided in pic.
+     *
+     *  @param pic the picture to hide the code in
+     */
+    public void hideInRed(BufferedImage pic) {
+        this.hideInRed(0, pic);
+    }
+
+    /**
+     * Hide this ImageGenerator's code in the red channel of the provided image. The generated image will look
+     * like the one provided in pic.
+     *
+     * @param pos the slot index within which this algorithm will be used
+     * @param pic the picture to hide the code in
+     */
     public void hideInRed(int pos, BufferedImage pic) {
         Rectangle area = getArea(pos);
 
@@ -67,6 +132,24 @@ public class ImageGenerator
         }
     }
 
+    /**
+     * Hide this ImageGenerator's code in the green channel of the provided image. The generated image will look
+     * like the one provided in pic.
+     *
+     * @param pic the picture to hide the code in
+     */
+
+    public void hideInGreen(BufferedImage pic) {
+        this.hideInGreen(0, pic );
+    }
+
+    /**
+     * Hide this ImageGenerator's code in the green channel of the provided image. The generated image will look
+     * like the one provided in pic.
+     *
+     * @param pos the slot index within which this algorithm will be used
+     * @param pic the picture to hide the code in
+     */
     public void hideInGreen(int pos, BufferedImage pic) {
         Rectangle area = getArea(pos);
 
@@ -91,8 +174,25 @@ public class ImageGenerator
         }
     }
 
-    public void hideInBlue(int pos, BufferedImage pic) {
-        Rectangle area = getArea(pos);
+    /**
+     * Hide this ImageGenerator's code in the blue channel of the provided image. The generated image will look
+     * like the one provided in pic.
+     *
+     * @param pic the picture to hide the code in
+     */
+    public void hideInBlue(BufferedImage pic) {
+        this.hideInBlue(0, pic);
+    }
+
+    /**
+     * Hide this ImageGenerator's code in the blue channel of the provided image. The generated image will look
+     * like the one provided in pic.
+     *
+     * @param index the slot index within which this algorithm will be used
+     * @param pic the picture to hide the code in
+     */
+    public void hideInBlue(int index, BufferedImage pic) {
+        Rectangle area = getArea(index);
 
         pic = getImageToFit(pic);
 
@@ -115,6 +215,132 @@ public class ImageGenerator
         }
     }
 
+    /**
+     * Hide the code in static
+     */
+    public void hideInStatic() {
+        this.hideInStatic(0);
+    }
+
+    /**
+     * Mask the code in static in the given slot.
+     *
+     * @param index the index of the slot to fill with static.
+     */
+    public void hideInStatic(int index) {
+        Rectangle area = getArea(index);
+
+        for (int row = 0; row < rowHeight; row++) {
+            for (int col = 0; col < colWidth; col++) {
+                Color hideColor = new Color(img.getRGB(col + area.x, row + area.y));
+
+                int[] levels = random(3, 255);
+                if (((hideColor.getRed() + hideColor.getGreen()  + hideColor.getBlue()) / 3) > 127) {
+                    levels[1] = levels[0];
+                }
+                shuffle(levels);
+                Color picColor = new Color(levels[0], levels[1], levels[2]);
+
+                img.setRGB(col + area.x, row + area.y, picColor.getRGB());
+            }
+        }
+    }
+
+    /**
+     * Hide the code in a gradient of color that has been randomly shuffled
+     */
+    public void hideGradientColor() {
+        this.hideGradientColor(0);
+    }
+
+    /**
+     * Hide the code in a gradient of color that has been randomly shuffled
+     *
+     * @param index the slot to use this algorithm in
+     */
+
+    public void hideGradientColor(int index) {
+        Rectangle area = getArea(index);
+
+        Color[][] gradient = new Color[area.width][area.height];
+
+        for (int row = 0; row < rowHeight; row++) {
+            for (int col = 0; col < colWidth; col++) {
+                Color hideColor = new Color(img.getRGB(col + area.x, row + area.y));
+
+                if (((hideColor.getRed() + hideColor.getGreen()  + hideColor.getBlue()) / 3) < 127) {
+                    gradient[col][row] = new Color(0, 0, col);
+                }
+                else {
+                    gradient[col][row] = Color.BLACK;
+                }
+            }
+        }
+
+        shuffle(gradient);
+
+        for (int row = 0; row < rowHeight; row++) {
+            for (int col = 0; col < colWidth; col++) {
+                img.setRGB(col + area.x, row + area.y, gradient[col][row].getRGB());
+            }
+        }
+    }
+
+    /**
+     * Hide the code as binary data in the red channel of the given picture.
+     *
+     * @param pic the picture that the code will be hidden in.
+     */
+    public void hideBinaryData(BufferedImage pic) {
+        this.hideBinaryData(0, pic);
+    }
+
+    /**
+     * Hide the code as binary data in the red channel of the given picture.
+     *
+     * @param index the slot to hide the code within
+     * @param pic the picture that the code will be hidden in.
+     */
+    public void hideBinaryData(int index, BufferedImage pic) {
+        Rectangle area = getArea(index);
+
+        pic = getImageToFit(pic);
+
+        String data = "The code for your lock is " + code + ".";
+
+        char[] chars = data.toCharArray();
+
+        int charIndex = 0;
+        int bitIndex = 0;
+
+        for (int row = 0; row < rowHeight; row++) {
+            for (int col = 0; col < colWidth; col++) {
+                Color picColor = new Color(pic.getRGB(col, row));
+
+                int bit = 0;
+                if (charIndex < chars.length) {
+                    bit = (chars[charIndex] >> (7 - bitIndex)) & 0b00000001;
+                }
+
+                int red = (picColor.getRed() & 0b11111110) | bit;
+
+                bitIndex++;
+                if (bitIndex == 8) {
+                    bitIndex = 0;
+                    charIndex++;
+                }
+
+                picColor = new Color(red, picColor.getGreen(), picColor.getBlue());
+
+                img.setRGB(col + area.x, row + area.y, picColor.getRGB());
+            }
+        }
+    }
+
+    /**
+     * Draw the given text over each slot in the generated image
+     * @param text the text to draw in each slot
+     */
     public void drawText(String text) {
         Graphics g = img.getGraphics();
 
@@ -146,6 +372,11 @@ public class ImageGenerator
         g.dispose();
     }
 
+    /**
+     * Save the generated image as filename. Image will be saved in png format.
+     * @param filename the file to save as
+     * @throws IOException if the file could not be saved
+     */
     public void saveImage(String filename) throws IOException {
         ImageIO.write(img, "png", new File(filename));
     }
@@ -217,14 +448,7 @@ public class ImageGenerator
             algorithms[i] = i;
         }
 
-        // randomly swap the possible algorithm positions
-        for (int i = 0; i < algorithms.length; i++) {
-            int pos = (int)(Math.random() * algorithms.length);
-            int tmp = algorithms[i];
-            algorithms[i] = algorithms[pos];
-            algorithms[pos] = tmp;
-        }
-
+        shuffle(algorithms);
 
         try {
             for (int i = 0; i < algorithms.length; i++) {
@@ -239,8 +463,13 @@ public class ImageGenerator
                         gen.hideInBlue(i, randomImage());
                         break;
                     case 3:
+                        gen.hideInStatic(i);
+                        break;
                     case 4:
+                        gen.hideGradientColor(i);
+                        break;
                     case 5:
+                        gen.hideBinaryData(i, randomImage());
                         break;
                     default:
                         gen.blank(i, Color.WHITE);
@@ -261,6 +490,12 @@ public class ImageGenerator
         }
     }
 
+    /**
+     * Get a random image from the images directory
+     *
+     * @return the random image from the images directory
+     * @throws IOException if the image cannot be loaded
+     */
     public static BufferedImage randomImage() throws IOException {
         Path thisPath = Paths.get("");
 
@@ -280,12 +515,52 @@ public class ImageGenerator
         }
 
         File[] images = imagesDir.listFiles((file, name)-> {
-            return name.toLowerCase().endsWith(".png") || name.toLowerCase().endsWith(".jpg");
+            name = name.toLowerCase();
+            return name.endsWith(".png") || name.endsWith(".jpg");
         });
 
+        assert images != null;
         int num = (int)(Math.random() * images.length);
 
         return ImageIO.read(images[num]);
+    }
+
+    private static void shuffle(int[] arr) {
+        for (int i = 0; i < arr.length; i++) {
+            int pos = (int)(Math.random() * arr.length);
+            int tmp = arr[i];
+            arr[i] = arr[pos];
+            arr[pos] = tmp;
+        }
+    }
+    private static void shuffle(Color[][] arr) {
+        for (int i = 0; i < arr.length; i++) {
+            int pos = (int)(Math.random() * arr.length);
+            Color[] tmp = arr[i];
+            arr[i] = arr[pos];
+            arr[pos] = tmp;
+        }
+    }
+
+    private static int[] random(int size, int max) {
+        int[] arr = new int[size];
+
+        for (int i = 0; i < arr.length; i++) {
+            boolean same = true;
+            while (same) {
+                arr[i] = (int) (Math.random() * max);
+
+                same = false;
+                for (int j = i - 1; j >= 0; j--) {
+                    if (arr[j] == arr[i]) {
+                        same = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        return arr;
     }
 
     private static class Rectangle {
