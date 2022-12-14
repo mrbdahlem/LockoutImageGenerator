@@ -11,7 +11,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 /**
- * A simple stegonagriphic image generator to hide simple codes using various algorithms.
+ * A simple steganographic image generator to hide simple codes using various algorithms.
  */
 public class ImageGenerator
 {
