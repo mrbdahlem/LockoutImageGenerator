@@ -24,6 +24,8 @@ public class ImageGenerator
     private final BufferedImage img;
     private final String code;
 
+    public final static int NUM_ALGORITHMS = 6;
+
     /**
      * A single slot Image generator to hide a specific code. Use one of the included algorithms to encode the image.
      *
@@ -68,11 +70,7 @@ public class ImageGenerator
      * @param color the color to fill the image with
      */
     public void blank(Color color) {
-
-        Graphics g = img.getGraphics();
-        g.setColor(color);
-        g.fillRect(0, 0, img.getWidth(), img.getHeight());
-        g.dispose();
+        blank(0, color);
     }
 
     /**
@@ -235,7 +233,7 @@ public class ImageGenerator
                 Color hideColor = new Color(img.getRGB(col + area.x, row + area.y));
 
                 int[] levels = random(3, 255);
-                if (((hideColor.getRed() + hideColor.getGreen()  + hideColor.getBlue()) / 3) > 127) {
+                if (((hideColor.getRed() + hideColor.getGreen() + hideColor.getBlue()) / 3) > 127) {
                     levels[1] = levels[0];
                 }
                 shuffle(levels);
@@ -425,55 +423,29 @@ public class ImageGenerator
         return scaled;
     }
 
-    public static void main(String[] args) {
-        if (args.length < 1) {
-            System.out.println("Usage: java ImageGenerator A1 CODE");
-            System.out.println("   where LOCK is the lock number and CODE is the code to hide in the image");
-            System.out.println("   ie. java ImageGenerator A1 356");
-            System.out.println("   Will generate a file named A1.png with the code A1-356 hidden in it");
-            args = new String[]{"A1", "356"};
-        }
-
-        String lock = args[0];
-        String code = lock+"-"+args[1];
-
-        int numRows = 3;
-        int numCols = 2;
-
-        ImageGenerator gen = new ImageGenerator(code, 400, 400, numRows, numCols);
-
-        // create an array of the possible algorithms
-        int[] algorithms = new int[numRows * numCols];
-        for (int i = 0; i < algorithms.length; i++) {
-            algorithms[i] = i;
-        }
-
-        shuffle(algorithms);
-
+    public void doAlgorithm(int num) {
         try {
-            for (int i = 0; i < algorithms.length; i++) {
-                switch (algorithms[i]) {
-                    case 0:
-                        gen.hideInRed(i, randomImage());
-                        break;
-                    case 1:
-                        gen.hideInGreen(i, randomImage());
-                        break;
-                    case 2:
-                        gen.hideInBlue(i, randomImage());
-                        break;
-                    case 3:
-                        gen.hideInStatic(i);
-                        break;
-                    case 4:
-                        gen.hideGradientColor(i);
-                        break;
-                    case 5:
-                        gen.hideBinaryData(i, randomImage());
-                        break;
-                    default:
-                        gen.blank(i, Color.WHITE);
-                }
+            switch (num) {
+                case 0:
+                    this.hideInRed(randomImage());
+                    break;
+                case 1:
+                    this.hideInGreen(randomImage());
+                    break;
+                case 2:
+                    this.hideInBlue(randomImage());
+                    break;
+                case 3:
+                    this.hideInStatic();
+                    break;
+                case 4:
+                    this.hideGradientColor();
+                    break;
+                case 5:
+                    this.hideBinaryData(randomImage());
+                    break;
+                default:
+                    throw new RuntimeException("Invalid algorithm number " + num + " must be 0.." + NUM_ALGORITHMS);
             }
         }
         catch (IOException e) {
@@ -481,15 +453,7 @@ public class ImageGenerator
             System.exit(1);
         }
 
-        String filename = lock + ".png";
-        try {
-            gen.saveImage(filename);
-            System.out.println("Saved " + filename);
-        } catch (IOException e) {
-            System.err.println("Could not save image: " + e.getMessage());
-        }
     }
-
     /**
      * Get a random image from the images directory
      *
